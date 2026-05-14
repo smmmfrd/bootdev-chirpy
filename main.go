@@ -1,7 +1,7 @@
 package main
 
 import (
-	"fmt"
+	"log"
 	"net/http"
 )
 
@@ -17,7 +17,7 @@ func main() {
 		Handler: mux,
 	}
 
-	fmt.Printf("Starting server on port %v\n", port)
+	log.Printf("Starting server on port %v\n", port)
 
-	server.ListenAndServe()
+	log.Fatal(server.ListenAndServe())
 }
