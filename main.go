@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"slices"
+	"strings"
 	"sync/atomic"
 )
 
@@ -73,7 +75,7 @@ type chirp struct {
 }
 
 type response struct {
-	Valid bool `json:"valid"`
+	CleanedBody string `json:"cleaned_body"`
 }
 
 func validate_chirp(w http.ResponseWriter, r *http.Request) {
@@ -91,11 +93,25 @@ func validate_chirp(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	c.Body = badWordReplacement(c.Body)
+
 	res := response{
-		Valid: true,
+		CleanedBody: c.Body,
 	}
 
 	respondWithJSON(w, 200, res)
+}
+
+func badWordReplacement(c string) string {
+	split := strings.Split(c, " ")
+
+	for i, str := range split {
+		if slices.Contains([]string{"kerfuffle", "sharbert", "fornax"}, strings.ToLower(str)) {
+			split[i] = "****"
+		}
+	}
+
+	return strings.Join(split, " ")
 }
 
 func respondWithError(w http.ResponseWriter, code int, msg string) {
@@ -121,7 +137,7 @@ func respondWithError(w http.ResponseWriter, code int, msg string) {
 }
 
 func respondWithJSON(w http.ResponseWriter, code int, payload interface{}) {
-	w.WriteHeader(200)
+	w.WriteHeader(code)
 
 	data, err := json.Marshal(payload)
 	if err != nil {
