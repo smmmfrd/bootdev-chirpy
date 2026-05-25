@@ -1,6 +1,3 @@
--- local connection: 
--- postgres://sam:@localhost:5432/chirpy
-
 -- +goose Up
 CREATE TABLE users (
     id UUID PRIMARY KEY,
