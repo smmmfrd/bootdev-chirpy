@@ -10,7 +10,9 @@ import (
 	"slices"
 	"strings"
 	"sync/atomic"
+	"time"
 
+	"github.com/google/uuid"
 	"github.com/joho/godotenv"
 	_ "github.com/lib/pq"
 	"github.com/smmmfrd/bootdev-chirpy/internal/database"
@@ -19,6 +21,7 @@ import (
 type apiConfig struct {
 	fileServerHits atomic.Int32
 	queries        *database.Queries
+	platform       string
 }
 
 // Run with: go build -o out && ./out
@@ -26,6 +29,7 @@ func main() {
 	godotenv.Load()
 
 	dbURL := os.Getenv("DB_URL")
+	platform := os.Getenv("PLATFORM")
 
 	db, err := sql.Open("postgres", dbURL)
 
@@ -41,6 +45,7 @@ func main() {
 	cfg := apiConfig{
 		fileServerHits: atomic.Int32{},
 		queries:        dbQueries,
+		platform:       platform,
 	}
 
 	mux := http.NewServeMux()
@@ -77,12 +82,23 @@ func (cfg *apiConfig) metrics(w http.ResponseWriter, _ *http.Request) {
 	w.Write([]byte(fmt.Sprintf("<html>\n<body>\n<h1>Welcome, Chirpy Admin</h1>\n<p>Chirpy has been visited %d times!</p>\n</body>\n</html>", cfg.fileServerHits.Load())))
 }
 
-func (cfg *apiConfig) reset(w http.ResponseWriter, _ *http.Request) {
+func (cfg *apiConfig) reset(w http.ResponseWriter, r *http.Request) {
+	if cfg.platform != "dev" {
+		respondWithError(w, http.StatusForbidden, "Reset is only allowed in dev environment")
+		return
+	}
+
 	cfg.fileServerHits.Store(0)
+
+	err := cfg.queries.Reset(r.Context())
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, "Failed to reset the database")
+	}
+
 	w.Header().Set("Content-type", "text/plain; charset=utf-8")
 	w.WriteHeader(http.StatusOK)
 
-	w.Write([]byte("Hits reset to 0"))
+	w.Write([]byte("Hits reset to 0 and database reset"))
 }
 
 func healthz(w http.ResponseWriter, _ *http.Request) {
@@ -170,9 +186,20 @@ func respondWithJSON(w http.ResponseWriter, code int, payload interface{}) {
 	w.Write(data)
 }
 
+type User struct {
+	ID        uuid.UUID `json:"id"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
+	Email     string    `json:"email"`
+}
+
 func (cfg *apiConfig) createUser(w http.ResponseWriter, r *http.Request) {
 	type parameters struct {
 		Email string `json:"email"`
+	}
+
+	type response struct {
+		User
 	}
 
 	decoder := json.NewDecoder(r.Body)
@@ -190,5 +217,12 @@ func (cfg *apiConfig) createUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	respondWithJSON(w, 200, user)
+	respondWithJSON(w, 201, response{
+		User: User{
+			ID:        user.ID,
+			CreatedAt: user.CreatedAt,
+			UpdatedAt: user.UpdatedAt,
+			Email:     user.Email,
+		},
+	})
 }
