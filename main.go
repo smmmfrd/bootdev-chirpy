@@ -10,9 +10,7 @@ import (
 	"slices"
 	"strings"
 	"sync/atomic"
-	"time"
 
-	"github.com/google/uuid"
 	"github.com/joho/godotenv"
 	_ "github.com/lib/pq"
 	"github.com/smmmfrd/bootdev-chirpy/internal/database"
@@ -53,7 +51,7 @@ func main() {
 
 	mux.HandleFunc("GET /api/healthz", healthz)
 	mux.HandleFunc("POST /api/validate_chirp", validate_chirp)
-	mux.HandleFunc("POST /api/users", cfg.createUser)
+	mux.HandleFunc("POST /api/users", cfg.CreateUser)
 
 	mux.HandleFunc("POST /admin/reset", cfg.reset)
 	mux.HandleFunc("GET /admin/metrics", cfg.metrics)
@@ -184,45 +182,4 @@ func respondWithJSON(w http.ResponseWriter, code int, payload interface{}) {
 
 	w.Header().Set("Content-Type", "application/json")
 	w.Write(data)
-}
-
-type User struct {
-	ID        uuid.UUID `json:"id"`
-	CreatedAt time.Time `json:"created_at"`
-	UpdatedAt time.Time `json:"updated_at"`
-	Email     string    `json:"email"`
-}
-
-func (cfg *apiConfig) createUser(w http.ResponseWriter, r *http.Request) {
-	type parameters struct {
-		Email string `json:"email"`
-	}
-
-	type response struct {
-		User
-	}
-
-	decoder := json.NewDecoder(r.Body)
-
-	e := parameters{}
-
-	if err := decoder.Decode(&e); err != nil {
-		respondWithError(w, 500, fmt.Sprintf("Error decoding parameters: %s", err))
-		return
-	}
-
-	user, err := cfg.queries.CreateUser(r.Context(), e.Email)
-	if err != nil {
-		respondWithError(w, http.StatusInternalServerError, "Couldn't create user")
-		return
-	}
-
-	respondWithJSON(w, 201, response{
-		User: User{
-			ID:        user.ID,
-			CreatedAt: user.CreatedAt,
-			UpdatedAt: user.UpdatedAt,
-			Email:     user.Email,
-		},
-	})
 }
