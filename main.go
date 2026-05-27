@@ -7,8 +7,6 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"slices"
-	"strings"
 	"sync/atomic"
 
 	"github.com/joho/godotenv"
@@ -50,7 +48,7 @@ func main() {
 	mux.Handle("/app/", cfg.middlewareMetrics(http.StripPrefix("/app", http.FileServer(http.Dir(".")))))
 
 	mux.HandleFunc("GET /api/healthz", healthz)
-	mux.HandleFunc("POST /api/validate_chirp", validate_chirp)
+	mux.HandleFunc("POST /api/chirps", cfg.CreateChirp)
 	mux.HandleFunc("POST /api/users", cfg.CreateUser)
 
 	mux.HandleFunc("POST /admin/reset", cfg.reset)
@@ -104,49 +102,6 @@ func healthz(w http.ResponseWriter, _ *http.Request) {
 	w.WriteHeader(http.StatusOK)
 
 	w.Write([]byte("OK"))
-}
-
-type chirp struct {
-	Body string `json:"body"`
-}
-
-type response struct {
-	CleanedBody string `json:"cleaned_body"`
-}
-
-func validate_chirp(w http.ResponseWriter, r *http.Request) {
-	decoder := json.NewDecoder(r.Body)
-	c := chirp{}
-
-	if err := decoder.Decode(&c); err != nil {
-		respondWithError(w, 500, fmt.Sprintf("Error decoding parameters: %s", err))
-		return
-	}
-
-	if len(c.Body) > 140 {
-		respondWithError(w, 400, "Chirp is too long")
-		return
-	}
-
-	c.Body = badWordReplacement(c.Body)
-
-	res := response{
-		CleanedBody: c.Body,
-	}
-
-	respondWithJSON(w, 200, res)
-}
-
-func badWordReplacement(c string) string {
-	split := strings.Split(c, " ")
-
-	for i, str := range split {
-		if slices.Contains([]string{"kerfuffle", "sharbert", "fornax"}, strings.ToLower(str)) {
-			split[i] = "****"
-		}
-	}
-
-	return strings.Join(split, " ")
 }
 
 func respondWithError(w http.ResponseWriter, code int, msg string) {
