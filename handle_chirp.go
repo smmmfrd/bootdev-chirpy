@@ -73,3 +73,25 @@ func badWordReplacement(c string) string {
 
 	return strings.Join(split, " ")
 }
+
+func (cfg *apiConfig) GetAllChirps(w http.ResponseWriter, r *http.Request) {
+	data, err := cfg.queries.GetAllChirps(r.Context())
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, "Could not retrieve chirps")
+		return
+	}
+
+	chirps := []Chirp{}
+
+	for _, chirp := range data {
+		chirps = append(chirps, Chirp{
+			ID:        chirp.ID,
+			CreatedAt: chirp.CreatedAt,
+			UpdatedAt: chirp.UpdatedAt,
+			Body:      chirp.Body,
+			UserID:    chirp.UserID,
+		})
+	}
+
+	respondWithJSON(w, 200, chirps)
+}
