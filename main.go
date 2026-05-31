@@ -11,6 +11,7 @@ import (
 
 	"github.com/joho/godotenv"
 	_ "github.com/lib/pq"
+
 	"github.com/smmmfrd/bootdev-chirpy/internal/database"
 )
 
