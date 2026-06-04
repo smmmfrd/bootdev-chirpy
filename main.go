@@ -19,6 +19,7 @@ type apiConfig struct {
 	fileServerHits atomic.Int32
 	queries        *database.Queries
 	platform       string
+	authSecret     string
 }
 
 // Run with: go build -o out && ./out
@@ -27,6 +28,7 @@ func main() {
 
 	dbURL := os.Getenv("DB_URL")
 	platform := os.Getenv("PLATFORM")
+	authSecret := os.Getenv("AUTH_SECRET")
 
 	db, err := sql.Open("postgres", dbURL)
 
@@ -43,6 +45,7 @@ func main() {
 		fileServerHits: atomic.Int32{},
 		queries:        dbQueries,
 		platform:       platform,
+		authSecret:     authSecret,
 	}
 
 	mux := http.NewServeMux()
