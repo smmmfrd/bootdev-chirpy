@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/smmmfrd/bootdev-chirpy/internal/auth"
 	"github.com/smmmfrd/bootdev-chirpy/internal/database"
 )
 
@@ -22,30 +23,42 @@ type Chirp struct {
 
 func (cfg *apiConfig) CreateChirp(w http.ResponseWriter, r *http.Request) {
 	type parameters struct {
-		Body   string    `json:"body"`
-		UserId uuid.UUID `json:"user_id"`
+		Body string `json:"body"`
 	}
 
 	type response struct {
 		Chirp
 	}
 
-	decoder := json.NewDecoder(r.Body)
-	c := parameters{}
+	token, err := auth.GetBearerToken(r.Header)
+	if err != nil {
+		respondWithError(w, http.StatusUnauthorized, "Couldn't find JWT")
+		return
+	}
 
-	if err := decoder.Decode(&c); err != nil {
+	userID, err := auth.ValidateJWT(token, cfg.authSecret)
+	if err != nil {
+		respondWithError(w, http.StatusUnauthorized, "Couldn't validate JWT")
+		return
+	}
+
+	decoder := json.NewDecoder(r.Body)
+	params := parameters{}
+
+	if err := decoder.Decode(&params); err != nil {
 		respondWithError(w, 500, fmt.Sprintf("Error decoding parameters: %s", err))
 		return
 	}
 
-	if len(c.Body) > 140 {
+	if len(params.Body) > 140 {
 		respondWithError(w, 400, "Chirp is too long")
 		return
 	}
 
-	c.Body = badWordReplacement(c.Body)
+	params.Body = badWordReplacement(params.Body)
 
-	res, err := cfg.queries.CreateChirp(r.Context(), database.CreateChirpParams{Body: c.Body, UserID: c.UserId})
+	res, err := cfg.queries.CreateChirp(r.Context(), database.CreateChirpParams{Body: params.Body, UserID: userID})
+
 	if err != nil {
 		respondWithError(w, http.StatusInternalServerError, "Error creating chirp")
 		return
