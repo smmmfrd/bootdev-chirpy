@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"slices"
+	"sort"
 	"strings"
 	"time"
 
@@ -118,6 +119,11 @@ func (cfg *apiConfig) GetAllChirps(w http.ResponseWriter, r *http.Request) {
 			Body:      chirp.Body,
 			UserID:    chirp.UserID,
 		})
+	}
+
+	order := r.URL.Query().Get("sort")
+	if order == "desc" {
+		sort.Slice(chirps, func(i, j int) bool { return chirps[i].CreatedAt.After(chirps[j].CreatedAt) })
 	}
 
 	respondWithJSON(w, 200, chirps)
