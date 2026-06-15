@@ -20,6 +20,7 @@ type apiConfig struct {
 	queries        *database.Queries
 	platform       string
 	authSecret     string
+	polkaSecret    string
 }
 
 // Run with: go build -o out && ./out
@@ -29,6 +30,7 @@ func main() {
 	dbURL := os.Getenv("DB_URL")
 	platform := os.Getenv("PLATFORM")
 	authSecret := os.Getenv("AUTH_SECRET")
+	polkaSecret := os.Getenv("POLKA_KEY")
 
 	db, err := sql.Open("postgres", dbURL)
 
@@ -46,6 +48,7 @@ func main() {
 		queries:        dbQueries,
 		platform:       platform,
 		authSecret:     authSecret,
+		polkaSecret:    polkaSecret,
 	}
 
 	mux := http.NewServeMux()
