@@ -88,7 +88,21 @@ func badWordReplacement(c string) string {
 }
 
 func (cfg *apiConfig) GetAllChirps(w http.ResponseWriter, r *http.Request) {
-	data, err := cfg.queries.GetAllChirps(r.Context())
+	var data []database.Chirp
+	var err error
+	author_id := r.URL.Query().Get("author_id")
+
+	if author_id == "" {
+		data, err = cfg.queries.GetAllChirps(r.Context())
+	} else {
+		u, err := uuid.Parse(author_id)
+		if err != nil {
+			respondWithError(w, http.StatusBadRequest, "Invalid authord ID")
+			return
+		}
+
+		data, err = cfg.queries.GetAllChirpsByAuthor(r.Context(), u)
+	}
 	if err != nil {
 		respondWithError(w, http.StatusInternalServerError, "Could not retrieve chirps")
 		return
